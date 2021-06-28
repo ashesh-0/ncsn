@@ -1,13 +1,15 @@
 import argparse
-import traceback
-import time
-import shutil
 import logging
-import yaml
-import sys
 import os
-import torch
+import shutil
+import sys
+import time
+import traceback
+
 import numpy as np
+import torch
+import yaml
+
 from runners import *
 
 
@@ -15,7 +17,7 @@ def parse_args_and_config():
     parser = argparse.ArgumentParser(description=globals()['__doc__'])
 
     parser.add_argument('--runner', type=str, default='AnnealRunner', help='The runner to execute')
-    parser.add_argument('--config', type=str, default='anneal.yml',  help='Path to the config file')
+    parser.add_argument('--config', type=str, default='anneal.yml', help='Path to the config file')
     parser.add_argument('--seed', type=int, default=1234, help='Random seed')
     parser.add_argument('--run', type=str, default='run', help='Path for saving running related data.')
     parser.add_argument('--doc', type=str, default='0', help='A string for documentation purpose')

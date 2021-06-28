@@ -1,18 +1,19 @@
-import numpy as np
-import tqdm
-from losses.dsm import dsm_score_estimation
-import torch.nn.functional as F
 import logging
-import torch
 import os
 import shutil
+
+import numpy as np
 import tensorboardX
+import torch
+import torch.nn.functional as F
 import torch.optim as optim
-from torchvision.datasets import MNIST, CIFAR10, FashionMNIST
 import torchvision.transforms as transforms
-from torch.utils.data import DataLoader, Subset
+import tqdm
 from datasets.celeba import CelebA
+from losses.dsm import dsm_score_estimation
 from models.refinenet_dilated_baseline import RefineNetDilated
+from torch.utils.data import DataLoader, Subset
+from torchvision.datasets import CIFAR10, MNIST, FashionMNIST
 
 __all__ = ['BaselineRunner']
 
@@ -24,8 +25,11 @@ class BaselineRunner():
 
     def get_optimizer(self, parameters):
         if self.config.optim.optimizer == 'Adam':
-            return optim.Adam(parameters, lr=self.config.optim.lr, weight_decay=self.config.optim.weight_decay,
-                              betas=(self.config.optim.beta1, 0.999), amsgrad=self.config.optim.amsgrad)
+            return optim.Adam(parameters,
+                              lr=self.config.optim.lr,
+                              weight_decay=self.config.optim.weight_decay,
+                              betas=(self.config.optim.beta1, 0.999),
+                              amsgrad=self.config.optim.amsgrad)
         elif self.config.optim.optimizer == 'RMSProp':
             return optim.RMSprop(parameters, lr=self.config.optim.lr, weight_decay=self.config.optim.weight_decay)
         elif self.config.optim.optimizer == 'SGD':
@@ -39,63 +43,75 @@ class BaselineRunner():
 
     def train(self):
         if self.config.data.random_flip is False:
-            tran_transform = test_transform = transforms.Compose([
-                transforms.Resize(self.config.data.image_size),
-                transforms.ToTensor()
-            ])
+            tran_transform = test_transform = transforms.Compose(
+                [transforms.Resize(self.config.data.image_size),
+                 transforms.ToTensor()])
         else:
             tran_transform = transforms.Compose([
                 transforms.Resize(self.config.data.image_size),
                 transforms.RandomHorizontalFlip(p=0.5),
                 transforms.ToTensor()
             ])
-            test_transform = transforms.Compose([
-                transforms.Resize(self.config.data.image_size),
-                transforms.ToTensor()
-            ])
+            test_transform = transforms.Compose([transforms.Resize(self.config.data.image_size), transforms.ToTensor()])
 
         if self.config.data.dataset == 'CIFAR10':
-            dataset = CIFAR10(os.path.join(self.args.run, 'datasets', 'cifar10'), train=True, download=True,
+            dataset = CIFAR10(os.path.join(self.args.run, 'datasets', 'cifar10'),
+                              train=True,
+                              download=True,
                               transform=tran_transform)
-            test_dataset = CIFAR10(os.path.join(self.args.run, 'datasets', 'cifar10_test'), train=False, download=True,
+            test_dataset = CIFAR10(os.path.join(self.args.run, 'datasets', 'cifar10_test'),
+                                   train=False,
+                                   download=True,
                                    transform=test_transform)
         elif self.config.data.dataset == 'MNIST':
-            dataset = MNIST(os.path.join(self.args.run, 'datasets', 'mnist'), train=True, download=True,
+            dataset = MNIST(os.path.join(self.args.run, 'datasets', 'mnist'),
+                            train=True,
+                            download=True,
                             transform=tran_transform)
-            test_dataset = MNIST(os.path.join(self.args.run, 'datasets', 'mnist_test'), train=False, download=True,
+            test_dataset = MNIST(os.path.join(self.args.run, 'datasets', 'mnist_test'),
+                                 train=False,
+                                 download=True,
                                  transform=test_transform)
 
         elif self.config.data.dataset == 'CELEBA':
             if self.config.data.random_flip:
-                dataset = CelebA(root=os.path.join(self.args.run, 'datasets', 'celeba'), split='train',
+                dataset = CelebA(root=os.path.join(self.args.run, 'datasets', 'celeba'),
+                                 split='train',
                                  transform=transforms.Compose([
                                      transforms.CenterCrop(140),
                                      transforms.Resize(self.config.data.image_size),
                                      transforms.RandomHorizontalFlip(),
                                      transforms.ToTensor(),
-                                 ]), download=True)
+                                 ]),
+                                 download=True)
             else:
-                dataset = CelebA(root=os.path.join(self.args.run, 'datasets', 'celeba'), split='train',
+                dataset = CelebA(root=os.path.join(self.args.run, 'datasets', 'celeba'),
+                                 split='train',
                                  transform=transforms.Compose([
                                      transforms.CenterCrop(140),
                                      transforms.Resize(self.config.data.image_size),
                                      transforms.ToTensor(),
-                                 ]), download=True)
+                                 ]),
+                                 download=True)
 
-            test_dataset = CelebA(root=os.path.join(self.args.run, 'datasets', 'celeba_test'), split='test',
+            test_dataset = CelebA(root=os.path.join(self.args.run, 'datasets', 'celeba_test'),
+                                  split='test',
                                   transform=transforms.Compose([
                                       transforms.CenterCrop(140),
                                       transforms.Resize(self.config.data.image_size),
                                       transforms.ToTensor(),
-                                  ]), download=True)
-
+                                  ]),
+                                  download=True)
 
         dataloader = DataLoader(dataset, batch_size=self.config.training.batch_size, shuffle=True, num_workers=4)
-        test_loader = DataLoader(test_dataset, batch_size=self.config.training.batch_size, shuffle=True,
-                                 num_workers=4, drop_last=True)
+        test_loader = DataLoader(test_dataset,
+                                 batch_size=self.config.training.batch_size,
+                                 shuffle=True,
+                                 num_workers=4,
+                                 drop_last=True)
 
         test_iter = iter(test_loader)
-        self.config.input_dim = self.config.data.image_size ** 2 * self.config.data.channels
+        self.config.input_dim = self.config.data.image_size**2 * self.config.data.channels
 
         tb_path = os.path.join(self.args.run, 'tensorboard', self.args.doc)
         if os.path.exists(tb_path):
@@ -189,16 +205,17 @@ class BaselineRunner():
         score.eval()
 
         if self.config.data.dataset == 'MNIST' or self.config.data.dataset == 'FashionMNIST':
-            transform = transforms.Compose([
-                transforms.Resize(self.config.data.image_size),
-                transforms.ToTensor()
-            ])
+            transform = transforms.Compose([transforms.Resize(self.config.data.image_size), transforms.ToTensor()])
 
             if self.config.data.dataset == 'MNIST':
-                dataset = MNIST(os.path.join(self.args.run, 'datasets', 'mnist'), train=True, download=True,
+                dataset = MNIST(os.path.join(self.args.run, 'datasets', 'mnist'),
+                                train=True,
+                                download=True,
                                 transform=transform)
             else:
-                dataset = FashionMNIST(os.path.join(self.args.run, 'datasets', 'fmnist'), train=True, download=True,
+                dataset = FashionMNIST(os.path.join(self.args.run, 'datasets', 'fmnist'),
+                                       train=True,
+                                       download=True,
                                        transform=transform)
 
             dataloader = DataLoader(dataset, batch_size=100, shuffle=True, num_workers=4)
@@ -219,17 +236,22 @@ class BaselineRunner():
                 torch.save(sample, os.path.join(self.args.image_folder, 'samples_{}.pth'.format(i)))
 
         elif self.config.data.dataset == 'CELEBA':
-            dataset = CelebA(root=os.path.join(self.args.run, 'datasets', 'celeba'), split='test',
+            dataset = CelebA(root=os.path.join(self.args.run, 'datasets', 'celeba'),
+                             split='test',
                              transform=transforms.Compose([
                                  transforms.CenterCrop(140),
                                  transforms.Resize(self.config.data.image_size),
                                  transforms.ToTensor(),
-                             ]), download=True)
+                             ]),
+                             download=True)
 
             dataloader = DataLoader(dataset, batch_size=64, shuffle=True, num_workers=4)
             samples, _ = next(iter(dataloader))
 
-            samples = torch.rand(100, 3, self.config.data.image_size, self.config.data.image_size,
+            samples = torch.rand(100,
+                                 3,
+                                 self.config.data.image_size,
+                                 self.config.data.image_size,
                                  device=self.config.device)
 
             all_samples = self.Langevin_dynamics(samples, score, 1000, 0.00002)
@@ -244,13 +266,12 @@ class BaselineRunner():
                 torch.save(sample, os.path.join(self.args.image_folder, 'samples_{}.pth'.format(i)))
 
         else:
-            transform = transforms.Compose([
-                transforms.Resize(self.config.data.image_size),
-                transforms.ToTensor()
-            ])
+            transform = transforms.Compose([transforms.Resize(self.config.data.image_size), transforms.ToTensor()])
 
             if self.config.data.dataset == 'CIFAR10':
-                dataset = CIFAR10(os.path.join(self.args.run, 'datasets', 'cifar10'), train=True, download=True,
+                dataset = CIFAR10(os.path.join(self.args.run, 'datasets', 'cifar10'),
+                                  train=True,
+                                  download=True,
                                   transform=transform)
 
             dataloader = DataLoader(dataset, batch_size=100, shuffle=True, num_workers=4)

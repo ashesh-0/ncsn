@@ -1,12 +1,14 @@
 import logging
-import torch.optim as optim
-import torch.nn as nn
-from torch.distributions import Normal
-from losses.sliced_sm import *
-from models.gmm import GMM, Gaussian, GMMDist, Square, GMMDistAnneal
+
 import matplotlib.pyplot as plt
-import torch
 import seaborn as sns
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from losses.sliced_sm import *
+from models.gmm import GMM, Gaussian, GMMDist, GMMDistAnneal, Square
+from torch.distributions import Normal
+
 sns.set()
 sns.set_style('white')
 
@@ -48,7 +50,7 @@ class ToyRunner():
     def anneal_langevin_dynamics(score, init, sigmas, lr=0.1, n_steps_each=100):
         for sigma in sigmas:
             for i in range(n_steps_each):
-                current_lr = lr * (sigma / sigmas[-1]) ** 2
+                current_lr = lr * (sigma / sigmas[-1])**2
                 init = init + current_lr / 2 * score(init, sigma).detach()
                 init = init + torch.randn_like(init) * np.sqrt(current_lr)
 
@@ -113,7 +115,7 @@ class ToyRunner():
         else:
             plt.show()
 
-        samples = teacher.sample((1280,))
+        samples = teacher.sample((1280, ))
         samples = samples.detach().cpu().numpy()
         plt.scatter(samples[:, 0], samples[:, 1], s=0.1)
         plt.axis('square')
@@ -191,7 +193,7 @@ class ToyRunner():
         model_score = autograd.grad(log_pdf_model.sum(), data)[0]
         log_pdf_actual = teacher.log_prob(data)
         actual_score = autograd.grad(log_pdf_actual.sum(), data)[0]
-        return 1 / 2 * ((model_score - actual_score) ** 2).sum(1).mean(0)
+        return 1 / 2 * ((model_score - actual_score)**2).sum(1).mean(0)
 
     def train(self):
         hidden_units = 128
@@ -207,7 +209,7 @@ class ToyRunner():
         optimizer = optim.Adam(score.parameters(), lr=0.001)
 
         for step in range(10000):
-            samples = teacher.sample((128,))
+            samples = teacher.sample((128, ))
 
             loss, *_ = sliced_score_estimation_vr(score, samples, n_particles=1)
 
@@ -251,7 +253,7 @@ class ToyRunner():
         else:
             plt.show()
 
-        samples = teacher.sample((1280,))
+        samples = teacher.sample((1280, ))
         samples = samples.detach().cpu().numpy()
         plt.scatter(samples[:, 0], samples[:, 1], s=0.2)
         plt.axis('square')

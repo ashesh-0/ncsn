@@ -1,4 +1,5 @@
 import os
+
 import torch
 import torch.utils.data as data
 
@@ -24,18 +25,15 @@ class VisionDataset(data.Dataset):
             body.append("Root location: {}".format(self.root))
         body += self.extra_repr().splitlines()
         if hasattr(self, 'transform') and self.transform is not None:
-            body += self._format_transform_repr(self.transform,
-                                                "Transforms: ")
+            body += self._format_transform_repr(self.transform, "Transforms: ")
         if hasattr(self, 'target_transform') and self.target_transform is not None:
-            body += self._format_transform_repr(self.target_transform,
-                                                "Target transforms: ")
+            body += self._format_transform_repr(self.target_transform, "Target transforms: ")
         lines = [head] + [" " * self._repr_indent + line for line in body]
         return '\n'.join(lines)
 
     def _format_transform_repr(self, transform, head):
         lines = transform.__repr__().splitlines()
-        return (["{}{}".format(head, lines[0])] +
-                ["{}{}".format(" " * len(head), line) for line in lines[1:]])
+        return (["{}{}".format(head, lines[0])] + ["{}{}".format(" " * len(head), line) for line in lines[1:]])
 
     def extra_repr(self):
         return ""

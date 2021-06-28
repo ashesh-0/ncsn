@@ -1,19 +1,18 @@
+from functools import partial
+
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torch
-from functools import partial
 
 
 def conv3x3(in_planes, out_planes, stride=1, bias=False):
     "3x3 convolution with padding"
-    return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
-                     padding=1, bias=bias)
+    return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride, padding=1, bias=bias)
 
 
 def conv1x1(in_planes, out_planes, stride=1, bias=False):
     "1x1 convolution"
-    return nn.Conv2d(in_planes, out_planes, kernel_size=1, stride=stride,
-                     padding=0, bias=bias)
+    return nn.Conv2d(in_planes, out_planes, kernel_size=1, stride=stride, padding=0, bias=bias)
 
 
 def dilated_conv3x3(in_planes, out_planes, dilation, bias=True):
@@ -95,8 +94,7 @@ class CondRCUBlock(nn.Module):
         for i in range(n_blocks):
             for j in range(n_stages):
                 setattr(self, '{}_{}_norm'.format(i + 1, j + 1), normalizer(features, num_classes, bias=True))
-                setattr(self, '{}_{}_conv'.format(i + 1, j + 1),
-                        conv3x3(features, features, stride=1, bias=False))
+                setattr(self, '{}_{}_conv'.format(i + 1, j + 1), conv3x3(features, features, stride=1, bias=False))
 
         self.stride = 1
         self.n_blocks = n_blocks
@@ -149,9 +147,7 @@ class CondRefineBlock(nn.Module):
 
         self.adapt_convs = nn.ModuleList()
         for i in range(n_blocks):
-            self.adapt_convs.append(
-                CondRCUBlock(in_planes[i], 2, 2, num_classes, normalizer, act)
-            )
+            self.adapt_convs.append(CondRCUBlock(in_planes[i], 2, 2, num_classes, normalizer, act))
 
         self.output_convs = CondRCUBlock(features, 3 if end else 1, 2, num_classes, normalizer, act)
 
@@ -186,8 +182,7 @@ class ConvMeanPool(nn.Module):
         else:
             self.conv = nn.Sequential(
                 nn.ZeroPad2d((1, 0, 1, 0)),
-                nn.Conv2d(input_dim, output_dim, kernel_size, stride=1, padding=kernel_size // 2, bias=biases)
-            )
+                nn.Conv2d(input_dim, output_dim, kernel_size, stride=1, padding=kernel_size // 2, bias=biases))
 
     def forward(self, inputs):
         output = self.conv(inputs)
@@ -222,8 +217,15 @@ class UpsampleConv(nn.Module):
 
 
 class ConditionalResidualBlock(nn.Module):
-    def __init__(self, input_dim, output_dim, num_classes, resample=None, act=nn.ELU(),
-                 normalization=ConditionalBatchNorm2d, adjust_padding=False, dilation=None):
+    def __init__(self,
+                 input_dim,
+                 output_dim,
+                 num_classes,
+                 resample=None,
+                 act=nn.ELU(),
+                 normalization=ConditionalBatchNorm2d,
+                 adjust_padding=False,
+                 dilation=None):
         super().__init__()
         self.non_linearity = act
         self.input_dim = input_dim
@@ -321,40 +323,88 @@ class RefineNetDilated(nn.Module):
         self.end_conv = nn.Conv2d(ngf, config.data.channels, 3, stride=1, padding=1)
 
         self.res1 = nn.ModuleList([
-            ConditionalResidualBlock(self.ngf, self.ngf, self.num_classes, resample=None, act=act,
+            ConditionalResidualBlock(self.ngf,
+                                     self.ngf,
+                                     self.num_classes,
+                                     resample=None,
+                                     act=act,
                                      normalization=self.norm),
-            ConditionalResidualBlock(self.ngf, self.ngf, self.num_classes, resample=None, act=act,
-                                     normalization=self.norm)]
-        )
+            ConditionalResidualBlock(self.ngf,
+                                     self.ngf,
+                                     self.num_classes,
+                                     resample=None,
+                                     act=act,
+                                     normalization=self.norm)
+        ])
 
         self.res2 = nn.ModuleList([
-            ConditionalResidualBlock(self.ngf, 2 * self.ngf, self.num_classes, resample='down', act=act,
+            ConditionalResidualBlock(self.ngf,
+                                     2 * self.ngf,
+                                     self.num_classes,
+                                     resample='down',
+                                     act=act,
                                      normalization=self.norm),
-            ConditionalResidualBlock(2 * self.ngf, 2 * self.ngf, self.num_classes, resample=None, act=act,
-                                     normalization=self.norm)]
-        )
+            ConditionalResidualBlock(2 * self.ngf,
+                                     2 * self.ngf,
+                                     self.num_classes,
+                                     resample=None,
+                                     act=act,
+                                     normalization=self.norm)
+        ])
 
         self.res3 = nn.ModuleList([
-            ConditionalResidualBlock(2 * self.ngf, 2 * self.ngf, self.num_classes, resample='down', act=act,
-                                     normalization=self.norm, dilation=2),
-            ConditionalResidualBlock(2 * self.ngf, 2 * self.ngf, self.num_classes, resample=None, act=act,
-                                     normalization=self.norm, dilation=2)]
-        )
+            ConditionalResidualBlock(2 * self.ngf,
+                                     2 * self.ngf,
+                                     self.num_classes,
+                                     resample='down',
+                                     act=act,
+                                     normalization=self.norm,
+                                     dilation=2),
+            ConditionalResidualBlock(2 * self.ngf,
+                                     2 * self.ngf,
+                                     self.num_classes,
+                                     resample=None,
+                                     act=act,
+                                     normalization=self.norm,
+                                     dilation=2)
+        ])
 
         if config.data.image_size == 28:
             self.res4 = nn.ModuleList([
-                ConditionalResidualBlock(2 * self.ngf, 2 * self.ngf, self.num_classes, resample='down', act=act,
-                                         normalization=self.norm, adjust_padding=True, dilation=4),
-                ConditionalResidualBlock(2 * self.ngf, 2 * self.ngf, self.num_classes, resample=None, act=act,
-                                         normalization=self.norm, dilation=4)]
-            )
+                ConditionalResidualBlock(2 * self.ngf,
+                                         2 * self.ngf,
+                                         self.num_classes,
+                                         resample='down',
+                                         act=act,
+                                         normalization=self.norm,
+                                         adjust_padding=True,
+                                         dilation=4),
+                ConditionalResidualBlock(2 * self.ngf,
+                                         2 * self.ngf,
+                                         self.num_classes,
+                                         resample=None,
+                                         act=act,
+                                         normalization=self.norm,
+                                         dilation=4)
+            ])
         else:
             self.res4 = nn.ModuleList([
-                ConditionalResidualBlock(2 * self.ngf, 2 * self.ngf, self.num_classes, resample='down', act=act,
-                                         normalization=self.norm, adjust_padding=False, dilation=4),
-                ConditionalResidualBlock(2 * self.ngf, 2 * self.ngf, self.num_classes, resample=None, act=act,
-                                         normalization=self.norm, dilation=4)]
-            )
+                ConditionalResidualBlock(2 * self.ngf,
+                                         2 * self.ngf,
+                                         self.num_classes,
+                                         resample='down',
+                                         act=act,
+                                         normalization=self.norm,
+                                         adjust_padding=False,
+                                         dilation=4),
+                ConditionalResidualBlock(2 * self.ngf,
+                                         2 * self.ngf,
+                                         self.num_classes,
+                                         resample=None,
+                                         act=act,
+                                         normalization=self.norm,
+                                         dilation=4)
+            ])
 
         self.refine1 = CondRefineBlock([2 * self.ngf], 2 * self.ngf, self.num_classes, self.norm, act=act, start=True)
         self.refine2 = CondRefineBlock([2 * self.ngf, 2 * self.ngf], 2 * self.ngf, self.num_classes, self.norm, act=act)

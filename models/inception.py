@@ -12,7 +12,7 @@ class InceptionV3(nn.Module):
 
     # Maps feature dimensionality to their output blocks indices
     BLOCK_INDEX_BY_DIM = {
-        64: 0,   # First max pooling features
+        64: 0,  # First max pooling features
         192: 1,  # Second max pooling featurs
         768: 2,  # Pre-aux classifier features
         2048: 3  # Final average pooling features
@@ -61,20 +61,14 @@ class InceptionV3(nn.Module):
 
         # Block 0: input to maxpool1
         block0 = [
-            inception.Conv2d_1a_3x3,
-            inception.Conv2d_2a_3x3,
-            inception.Conv2d_2b_3x3,
+            inception.Conv2d_1a_3x3, inception.Conv2d_2a_3x3, inception.Conv2d_2b_3x3,
             nn.MaxPool2d(kernel_size=3, stride=2)
         ]
         self.blocks.append(nn.Sequential(*block0))
 
         # Block 1: maxpool1 to maxpool2
         if self.last_needed_block >= 1:
-            block1 = [
-                inception.Conv2d_3b_1x1,
-                inception.Conv2d_4a_3x3,
-                nn.MaxPool2d(kernel_size=3, stride=2)
-            ]
+            block1 = [inception.Conv2d_3b_1x1, inception.Conv2d_4a_3x3, nn.MaxPool2d(kernel_size=3, stride=2)]
             self.blocks.append(nn.Sequential(*block1))
 
         # Block 2: maxpool2 to aux classifier
@@ -94,9 +88,7 @@ class InceptionV3(nn.Module):
         # Block 3: aux classifier to final avgpool
         if self.last_needed_block >= 3:
             block3 = [
-                inception.Mixed_7a,
-                inception.Mixed_7b,
-                inception.Mixed_7c,
+                inception.Mixed_7a, inception.Mixed_7b, inception.Mixed_7c,
                 nn.AdaptiveAvgPool2d(output_size=(1, 1))
             ]
             self.blocks.append(nn.Sequential(*block3))
@@ -122,10 +114,7 @@ class InceptionV3(nn.Module):
         x = inp
 
         if self.resize_input:
-            x = F.interpolate(x,
-                              size=(299, 299),
-                              mode='bilinear',
-                              align_corners=False)
+            x = F.interpolate(x, size=(299, 299), mode='bilinear', align_corners=False)
 
         if self.normalize_input:
             x = 2 * x - 1  # Scale from range (0, 1) to range (-1, 1)

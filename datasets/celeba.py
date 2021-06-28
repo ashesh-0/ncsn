@@ -1,8 +1,10 @@
-import torch
 import os
+
 import PIL
+import torch
+
+from .utils import check_integrity, download_file_from_google_drive
 from .vision import VisionDataset
-from .utils import download_file_from_google_drive, check_integrity
 
 
 class CelebA(VisionDataset):
@@ -47,11 +49,7 @@ class CelebA(VisionDataset):
         ("0B7EVK8r0v71pY0NSMzRuSXJEVkk", "d32c9cbf5e040fd4025c592c306e6668", "list_eval_partition.txt"),
     ]
 
-    def __init__(self, root,
-                 split="train",
-                 target_type="attr",
-                 transform=None, target_transform=None,
-                 download=False):
+    def __init__(self, root, split="train", target_type="attr", transform=None, target_transform=None, download=False):
         import pandas
         super(CelebA, self).__init__(root)
         self.split = split
@@ -66,8 +64,7 @@ class CelebA(VisionDataset):
             self.download()
 
         if not self._check_integrity():
-            raise RuntimeError('Dataset not found or corrupted.' +
-                               ' You can use download=True to download it')
+            raise RuntimeError('Dataset not found or corrupted.' + ' You can use download=True to download it')
 
         self.transform = transform
         self.target_transform = target_transform
@@ -79,8 +76,7 @@ class CelebA(VisionDataset):
         elif split.lower() == "test":
             split = 2
         else:
-            raise ValueError('Wrong split entered! Please use split="train" '
-                             'or split="valid" or split="test"')
+            raise ValueError('Wrong split entered! Please use split="train" ' 'or split="valid" or split="test"')
 
         with open(os.path.join(self.root, self.base_folder, "list_eval_partition.txt"), "r") as f:
             splits = pandas.read_csv(f, delim_whitespace=True, header=None, index_col=0)

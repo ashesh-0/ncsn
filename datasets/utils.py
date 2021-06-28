@@ -1,7 +1,8 @@
+import errno
+import hashlib
 import os
 import os.path
-import hashlib
-import errno
+
 from torch.utils.model_zoo import tqdm
 
 
@@ -70,19 +71,12 @@ def download_url(url, root, filename=None, md5=None):
     else:
         try:
             print('Downloading ' + url + ' to ' + fpath)
-            urllib.request.urlretrieve(
-                url, fpath,
-                reporthook=gen_bar_updater()
-            )
+            urllib.request.urlretrieve(url, fpath, reporthook=gen_bar_updater())
         except OSError:
             if url[:5] == 'https':
                 url = url.replace('https:', 'http:')
-                print('Failed download. Trying https -> http instead.'
-                      ' Downloading ' + url + ' to ' + fpath)
-                urllib.request.urlretrieve(
-                    url, fpath,
-                    reporthook=gen_bar_updater()
-                )
+                print('Failed download. Trying https -> http instead.' ' Downloading ' + url + ' to ' + fpath)
+                urllib.request.urlretrieve(url, fpath, reporthook=gen_bar_updater())
 
 
 def list_dir(root, prefix=False):
@@ -94,12 +88,7 @@ def list_dir(root, prefix=False):
             only returns the name of the directories found
     """
     root = os.path.expanduser(root)
-    directories = list(
-        filter(
-            lambda p: os.path.isdir(os.path.join(root, p)),
-            os.listdir(root)
-        )
-    )
+    directories = list(filter(lambda p: os.path.isdir(os.path.join(root, p)), os.listdir(root)))
 
     if prefix is True:
         directories = [os.path.join(root, d) for d in directories]
@@ -118,12 +107,7 @@ def list_files(root, suffix, prefix=False):
             only returns the name of the files found
     """
     root = os.path.expanduser(root)
-    files = list(
-        filter(
-            lambda p: os.path.isfile(os.path.join(root, p)) and p.endswith(suffix),
-            os.listdir(root)
-        )
-    )
+    files = list(filter(lambda p: os.path.isfile(os.path.join(root, p)) and p.endswith(suffix), os.listdir(root)))
 
     if prefix is True:
         files = [os.path.join(root, d) for d in files]

@@ -1,6 +1,6 @@
+import numpy as np
 import torch
 import torch.autograd as autograd
-import numpy as np
 
 
 def single_sliced_score_matching(energy_net, samples, noise=None, detach=False, noise_type='radermacher'):
@@ -21,7 +21,7 @@ def single_sliced_score_matching(energy_net, samples, noise=None, detach=False, 
     logp = -energy_net(samples).sum()
     grad1 = autograd.grad(logp, samples, create_graph=True)[0]
     gradv = torch.sum(grad1 * vectors)
-    loss1 = torch.sum(grad1 * vectors, dim=-1) ** 2 * 0.5
+    loss1 = torch.sum(grad1 * vectors, dim=-1)**2 * 0.5
     if detach:
         loss1 = loss1.detach()
     grad2 = autograd.grad(gradv, samples, create_graph=True)[0]
@@ -49,7 +49,7 @@ def partial_sliced_score_matching(energy_net, samples, noise=None, detach=False,
     logp = -energy_net(samples).sum()
     grad1 = autograd.grad(logp, samples, create_graph=True)[0]
     gradv = torch.sum(grad1 * vectors)
-    loss1 = torch.norm(grad1, dim=-1) ** 2 * 0.5
+    loss1 = torch.norm(grad1, dim=-1)**2 * 0.5
     if detach:
         loss1 = loss1.detach()
     grad2 = autograd.grad(gradv, samples, create_graph=True)[0]
@@ -70,7 +70,7 @@ def sliced_score_matching(energy_net, samples, n_particles=1):
     logp = -energy_net(dup_samples).sum()
     grad1 = autograd.grad(logp, dup_samples, create_graph=True)[0]
     gradv = torch.sum(grad1 * vectors)
-    loss1 = torch.sum(grad1 * vectors, dim=-1) ** 2 * 0.5
+    loss1 = torch.sum(grad1 * vectors, dim=-1)**2 * 0.5
     grad2 = autograd.grad(gradv, dup_samples, create_graph=True)[0]
     loss2 = torch.sum(vectors * grad2, dim=-1)
 
@@ -107,7 +107,7 @@ def sliced_score_estimation(score_net, samples, n_particles=1):
 
     grad1 = score_net(dup_samples)
     gradv = torch.sum(grad1 * vectors)
-    loss1 = torch.sum(grad1 * vectors, dim=-1) ** 2 * 0.5
+    loss1 = torch.sum(grad1 * vectors, dim=-1)**2 * 0.5
     grad2 = autograd.grad(gradv, dup_samples, create_graph=True)[0]
     loss2 = torch.sum(vectors * grad2, dim=-1)
 
@@ -145,9 +145,8 @@ def sliced_score_estimation_vr(score_net, samples, n_particles=1):
 def anneal_sliced_score_estimation_vr(scorenet, samples, labels, sigmas, n_particles=1):
     used_sigmas = sigmas[labels].view(samples.shape[0], *([1] * len(samples.shape[1:])))
     perturbed_samples = samples + torch.randn_like(samples) * used_sigmas
-    dup_samples = perturbed_samples.unsqueeze(0).expand(n_particles, *samples.shape).contiguous().view(-1,
-                                                                                                       *samples.shape[
-                                                                                                        1:])
+    dup_samples = perturbed_samples.unsqueeze(0).expand(n_particles,
+                                                        *samples.shape).contiguous().view(-1, *samples.shape[1:])
     dup_labels = labels.unsqueeze(0).expand(n_particles, *labels.shape).contiguous().view(-1)
     dup_samples.requires_grad_(True)
 
@@ -166,6 +165,6 @@ def anneal_sliced_score_estimation_vr(scorenet, samples, labels, sigmas, n_parti
     loss1 = loss1.view(n_particles, -1).mean(dim=0)
     loss2 = loss2.view(n_particles, -1).mean(dim=0)
 
-    loss = (loss1 + loss2) * (used_sigmas.squeeze() ** 2)
+    loss = (loss1 + loss2) * (used_sigmas.squeeze()**2)
 
     return loss.mean(dim=0)

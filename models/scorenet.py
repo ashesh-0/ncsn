@@ -1,10 +1,12 @@
-import torch.nn as nn
 import functools
+
 import torch
-from torchvision.models import ResNet
+import torch.nn as nn
 import torch.nn.functional as F
-from .pix2pix import init_net, UnetSkipConnectionBlock, get_norm_layer, init_weights, ResnetBlock, \
-    UnetSkipConnectionBlockWithResNet
+from torchvision.models import ResNet
+
+from .pix2pix import (ResnetBlock, UnetSkipConnectionBlock, UnetSkipConnectionBlockWithResNet, get_norm_layer, init_net,
+                      init_weights)
 
 
 class ConvResBlock(nn.Module):
@@ -23,21 +25,15 @@ class ConvResBlock(nn.Module):
                 return nn.LeakyReLU(0.2, inplace=True)
 
         if not resize:
-            self.main = nn.Sequential(
-                nn.Conv2d(in_channel, out_channel, 3, stride=1, padding=1),
-                nn.GroupNorm(8, out_channel),
-                get_act(),
-                nn.Conv2d(out_channel, out_channel, 3, stride=1, padding=1),
-                nn.GroupNorm(8, out_channel)
-            )
+            self.main = nn.Sequential(nn.Conv2d(in_channel, out_channel, 3, stride=1, padding=1),
+                                      nn.GroupNorm(8, out_channel), get_act(),
+                                      nn.Conv2d(out_channel, out_channel, 3, stride=1, padding=1),
+                                      nn.GroupNorm(8, out_channel))
         else:
-            self.main = nn.Sequential(
-                nn.Conv2d(in_channel, out_channel, 3, stride=2, padding=1),
-                nn.GroupNorm(8, out_channel),
-                get_act(),
-                nn.Conv2d(out_channel, out_channel, 3, stride=1, padding=1),
-                nn.GroupNorm(8, out_channel)
-            )
+            self.main = nn.Sequential(nn.Conv2d(in_channel, out_channel, 3, stride=2, padding=1),
+                                      nn.GroupNorm(8, out_channel), get_act(),
+                                      nn.Conv2d(out_channel, out_channel, 3, stride=1, padding=1),
+                                      nn.GroupNorm(8, out_channel))
             self.residual = nn.Conv2d(in_channel, out_channel, 3, stride=2, padding=1)
 
         self.final_act = get_act()
@@ -69,21 +65,15 @@ class DeconvResBlock(nn.Module):
                 return nn.LeakyReLU(0.2, True)
 
         if not resize:
-            self.main = nn.Sequential(
-                nn.ConvTranspose2d(in_channel, out_channel, 3, stride=1, padding=1),
-                nn.GroupNorm(8, out_channel),
-                get_act(),
-                nn.ConvTranspose2d(out_channel, out_channel, 3, stride=1, padding=1),
-                nn.GroupNorm(8, out_channel)
-            )
+            self.main = nn.Sequential(nn.ConvTranspose2d(in_channel, out_channel, 3, stride=1, padding=1),
+                                      nn.GroupNorm(8, out_channel), get_act(),
+                                      nn.ConvTranspose2d(out_channel, out_channel, 3, stride=1, padding=1),
+                                      nn.GroupNorm(8, out_channel))
         else:
             self.main = nn.Sequential(
-                nn.ConvTranspose2d(in_channel, out_channel, 3, stride=1, padding=1),
-                nn.GroupNorm(8, out_channel),
-                get_act(),
-                nn.ConvTranspose2d(out_channel, out_channel, 3, stride=2, padding=1, output_padding=1),
-                nn.GroupNorm(8, out_channel)
-            )
+                nn.ConvTranspose2d(in_channel, out_channel, 3, stride=1, padding=1), nn.GroupNorm(8, out_channel),
+                get_act(), nn.ConvTranspose2d(out_channel, out_channel, 3, stride=2, padding=1, output_padding=1),
+                nn.GroupNorm(8, out_channel))
             self.residual = nn.ConvTranspose2d(in_channel, out_channel, 3, stride=2, padding=1, output_padding=1)
 
         self.final_act = get_act()
@@ -124,8 +114,7 @@ class ResScore(nn.Module):
             DeconvResBlock(2 * self.ndf, 2 * self.ndf, act=act),
             DeconvResBlock(2 * self.ndf, self.ndf, resize=True, act=act),
             DeconvResBlock(self.ndf, self.ndf, act=act),
-            nn.Conv2d(self.ndf, 3, 3, 1, 1)
-        )
+            nn.Conv2d(self.ndf, 3, 3, 1, 1))
 
     def forward(self, x):
         x = 2 * x - 1.
@@ -138,7 +127,6 @@ class ResNetScore(nn.Module):
 
     We adapt Torch code and idea from Justin Johnson's neural style transfer project(https://github.com/jcjohnson/fast-neural-style)
     """
-
     def __init__(self, config):
         """Construct a Resnet-based generator
 
@@ -166,32 +154,46 @@ class ResNetScore(nn.Module):
         else:
             use_bias = norm_layer == nn.InstanceNorm2d
 
-        model = [nn.ReflectionPad2d(3),
-                 nn.Conv2d(input_nc, ngf, kernel_size=7, padding=0, bias=use_bias),
-                 norm_layer(ngf),
-                 nn.ELU()]
+        model = [
+            nn.ReflectionPad2d(3),
+            nn.Conv2d(input_nc, ngf, kernel_size=7, padding=0, bias=use_bias),
+            norm_layer(ngf),
+            nn.ELU()
+        ]
 
         n_downsampling = 1
         for i in range(n_downsampling):  # add downsampling layers
-            mult = 2 ** i
-            model += [nn.Conv2d(ngf * mult, ngf * mult * 2, kernel_size=3, stride=2, padding=1, bias=use_bias),
-                      norm_layer(ngf * mult * 2),
-                      nn.ELU()]
+            mult = 2**i
+            model += [
+                nn.Conv2d(ngf * mult, ngf * mult * 2, kernel_size=3, stride=2, padding=1, bias=use_bias),
+                norm_layer(ngf * mult * 2),
+                nn.ELU()
+            ]
 
-        mult = 2 ** n_downsampling
+        mult = 2**n_downsampling
         for i in range(n_blocks):  # add ResNet blocks
 
-            model += [ResnetBlock(ngf * mult, padding_type=padding_type, norm_layer=norm_layer, use_dropout=use_dropout,
-                                  use_bias=use_bias)]
+            model += [
+                ResnetBlock(ngf * mult,
+                            padding_type=padding_type,
+                            norm_layer=norm_layer,
+                            use_dropout=use_dropout,
+                            use_bias=use_bias)
+            ]
 
         for i in range(n_downsampling):  # add upsampling layers
-            mult = 2 ** (n_downsampling - i)
-            model += [nn.ConvTranspose2d(ngf * mult, int(ngf * mult / 2),
-                                         kernel_size=3, stride=2,
-                                         padding=1, output_padding=1,
-                                         bias=use_bias),
-                      norm_layer(int(ngf * mult / 2)),
-                      nn.ELU()]
+            mult = 2**(n_downsampling - i)
+            model += [
+                nn.ConvTranspose2d(ngf * mult,
+                                   int(ngf * mult / 2),
+                                   kernel_size=3,
+                                   stride=2,
+                                   padding=1,
+                                   output_padding=1,
+                                   bias=use_bias),
+                norm_layer(int(ngf * mult / 2)),
+                nn.ELU()
+            ]
         model += [nn.ReflectionPad2d(3)]
         model += [nn.Conv2d(ngf, output_nc, kernel_size=7, padding=0)]
 
@@ -232,15 +234,28 @@ class UNetResScore(nn.Module):
         # gradually reduce the number of filters from ngf * 8 to ngf
         # unet_block = UnetSkipConnectionBlock(ngf * 4, ngf * 8, input_nc=None, submodule=unet_block,
         #                                      norm_layer=norm_layer)
-        unet_block = UnetSkipConnectionBlockWithResNet(ngf * 8, ngf * 8, input_nc=None, submodule=None,
-                                             norm_layer=norm_layer, innermost=True)
-        unet_block = UnetSkipConnectionBlockWithResNet(ngf * 4, ngf * 8, input_nc=None, submodule=unet_block,
-                                             norm_layer=norm_layer)
-        unet_block = UnetSkipConnectionBlockWithResNet(ngf * 2, ngf * 4, input_nc=None, submodule=unet_block,
-                                             norm_layer=norm_layer)
-        self.model = UnetSkipConnectionBlockWithResNet(output_nc, ngf * 2, input_nc=input_nc, submodule=unet_block,
-                                             outermost=True,
-                                             norm_layer=norm_layer)  # add the outermost layer
+        unet_block = UnetSkipConnectionBlockWithResNet(ngf * 8,
+                                                       ngf * 8,
+                                                       input_nc=None,
+                                                       submodule=None,
+                                                       norm_layer=norm_layer,
+                                                       innermost=True)
+        unet_block = UnetSkipConnectionBlockWithResNet(ngf * 4,
+                                                       ngf * 8,
+                                                       input_nc=None,
+                                                       submodule=unet_block,
+                                                       norm_layer=norm_layer)
+        unet_block = UnetSkipConnectionBlockWithResNet(ngf * 2,
+                                                       ngf * 4,
+                                                       input_nc=None,
+                                                       submodule=unet_block,
+                                                       norm_layer=norm_layer)
+        self.model = UnetSkipConnectionBlockWithResNet(output_nc,
+                                                       ngf * 2,
+                                                       input_nc=input_nc,
+                                                       submodule=unet_block,
+                                                       outermost=True,
+                                                       norm_layer=norm_layer)  # add the outermost layer
 
         # init_weights(self, init_type='normal', init_gain=0.02)
 
@@ -281,18 +296,38 @@ class UNetScore(nn.Module):
         # unet_block = UnetSkipConnectionBlock(ngf * 4, ngf * 8, input_nc=None, submodule=unet_block,
         #                                      norm_layer=norm_layer)
         if config.data.image_size == 32:
-            unet_block = UnetSkipConnectionBlock(ngf * 8, ngf * 8, input_nc=None, submodule=None,
-                                             norm_layer=norm_layer, innermost=True)
-            unet_block = UnetSkipConnectionBlock(ngf * 8, ngf * 8, input_nc=None, submodule=unet_block,
+            unet_block = UnetSkipConnectionBlock(ngf * 8,
+                                                 ngf * 8,
+                                                 input_nc=None,
+                                                 submodule=None,
+                                                 norm_layer=norm_layer,
+                                                 innermost=True)
+            unet_block = UnetSkipConnectionBlock(ngf * 8,
+                                                 ngf * 8,
+                                                 input_nc=None,
+                                                 submodule=unet_block,
                                                  norm_layer=norm_layer)
         elif config.data.image_size == 16:
-            unet_block = UnetSkipConnectionBlock(ngf * 8, ngf * 8, input_nc=None, submodule=None,
-                                                 norm_layer=norm_layer, innermost=True)
-        unet_block = UnetSkipConnectionBlock(ngf * 4, ngf * 8, input_nc=None, submodule=unet_block,
+            unet_block = UnetSkipConnectionBlock(ngf * 8,
+                                                 ngf * 8,
+                                                 input_nc=None,
+                                                 submodule=None,
+                                                 norm_layer=norm_layer,
+                                                 innermost=True)
+        unet_block = UnetSkipConnectionBlock(ngf * 4,
+                                             ngf * 8,
+                                             input_nc=None,
+                                             submodule=unet_block,
                                              norm_layer=norm_layer)
-        unet_block = UnetSkipConnectionBlock(ngf * 2, ngf * 4, input_nc=None, submodule=unet_block,
+        unet_block = UnetSkipConnectionBlock(ngf * 2,
+                                             ngf * 4,
+                                             input_nc=None,
+                                             submodule=unet_block,
                                              norm_layer=norm_layer)
-        self.model = UnetSkipConnectionBlock(output_nc, ngf * 2, input_nc=input_nc, submodule=unet_block,
+        self.model = UnetSkipConnectionBlock(output_nc,
+                                             ngf * 2,
+                                             input_nc=input_nc,
+                                             submodule=unet_block,
                                              outermost=True,
                                              norm_layer=norm_layer)  # add the outermost layer
 
@@ -311,14 +346,11 @@ class ResEnergy(nn.Module):
         self.nef = config.model.nef
         self.ndf = config.model.ndf
         act = 'softplus'
-        self.convs = nn.Sequential(
-            nn.Conv2d(1, self.nef, 3, 1, 1),
-            ConvResBlock(self.nef, self.nef, act=act),
-            ConvResBlock(self.nef, 2 * self.nef, resize=True, act=act),
-            ConvResBlock(2 * self.nef, 2 * self.nef, act=act),
-            ConvResBlock(2 * self.nef, 4 * self.nef, resize=True, act=act),
-            ConvResBlock(4 * self.nef, 4 * self.nef, act=act)
-        )
+        self.convs = nn.Sequential(nn.Conv2d(1, self.nef, 3, 1, 1), ConvResBlock(self.nef, self.nef, act=act),
+                                   ConvResBlock(self.nef, 2 * self.nef, resize=True, act=act),
+                                   ConvResBlock(2 * self.nef, 2 * self.nef, act=act),
+                                   ConvResBlock(2 * self.nef, 4 * self.nef, resize=True, act=act),
+                                   ConvResBlock(4 * self.nef, 4 * self.nef, act=act))
 
     def forward(self, x):
         x = 2 * x - 1.
@@ -331,25 +363,14 @@ class MLPScore(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.config = config
-        self.main = nn.Sequential(
-            nn.Linear(10 * 10, 1024),
-            nn.LayerNorm(1024),
-            nn.ELU(),
-            nn.Linear(1024, 1024),
-            nn.LayerNorm(1024),
-            nn.ELU(),
-            nn.Linear(1024, 512),
-            nn.LayerNorm(512),
-            nn.ELU(),
-            nn.Linear(512, 100),
-            nn.LayerNorm(100)
-        )
+        self.main = nn.Sequential(nn.Linear(10 * 10, 1024), nn.LayerNorm(1024), nn.ELU(), nn.Linear(1024, 1024),
+                                  nn.LayerNorm(1024), nn.ELU(), nn.Linear(1024, 512), nn.LayerNorm(512), nn.ELU(),
+                                  nn.Linear(512, 100), nn.LayerNorm(100))
 
     def forward(self, x):
         x = x.view(x.shape[0], -1)
         if x.is_cuda and self.config.training.ngpu > 1:
-            score = nn.parallel.data_parallel(
-                self.main, x, list(range(self.config.training.ngpu)))
+            score = nn.parallel.data_parallel(self.main, x, list(range(self.config.training.ngpu)))
         else:
             score = self.main(x)
 
@@ -393,21 +414,15 @@ class LargeScore(nn.Module):
             nn.ELU()
             # state size. (nc) x 28 x 28
         )
-        self.fc = nn.Sequential(
-            nn.Linear(config.data.channels * 28 * 28, 1024),
-            nn.LayerNorm(1024),
-            nn.ELU(),
-            nn.Linear(1024, config.data.channels * 28 * 28)
-        )
+        self.fc = nn.Sequential(nn.Linear(config.data.channels * 28 * 28, 1024), nn.LayerNorm(1024), nn.ELU(),
+                                nn.Linear(1024, config.data.channels * 28 * 28))
 
     def forward(self, x):
         if x.is_cuda and self.config.training.ngpu > 1:
-            score = nn.parallel.data_parallel(
-                self.u_net, x, list(range(self.config.training.ngpu)))
+            score = nn.parallel.data_parallel(self.u_net, x, list(range(self.config.training.ngpu)))
         else:
             score = self.u_net(x)
-        score = self.fc(score.view(x.shape[0], -1)).view(
-            x.shape[0], self.config.data.channels, 28, 28)
+        score = self.fc(score.view(x.shape[0], -1)).view(x.shape[0], self.config.data.channels, 28, 28)
         return score
 
 
@@ -448,21 +463,15 @@ class Score(nn.Module):
             nn.ELU()
             # state size. (nc) x 28 x 28
         )
-        self.fc = nn.Sequential(
-            nn.Linear(config.data.channels * 28 * 28, 1024),
-            nn.LayerNorm(1024),
-            nn.ELU(),
-            nn.Linear(1024, config.data.channels * 28 * 28)
-        )
+        self.fc = nn.Sequential(nn.Linear(config.data.channels * 28 * 28, 1024), nn.LayerNorm(1024), nn.ELU(),
+                                nn.Linear(1024, config.data.channels * 28 * 28))
 
     def forward(self, x):
         if x.is_cuda and self.config.training.ngpu > 1:
-            score = nn.parallel.data_parallel(
-                self.u_net, x, list(range(self.config.training.ngpu)))
+            score = nn.parallel.data_parallel(self.u_net, x, list(range(self.config.training.ngpu)))
         else:
             score = self.u_net(x)
-        score = self.fc(score.view(x.shape[0], -1)).view(
-            x.shape[0], self.config.data.channels, 28, 28)
+        score = self.fc(score.view(x.shape[0], -1)).view(x.shape[0], self.config.data.channels, 28, 28)
         return score
 
 
@@ -492,19 +501,13 @@ class SmallScore(nn.Module):
             # nn.Softplus(),
             nn.ELU(),
         )
-        self.fc = nn.Sequential(
-            nn.Linear(config.data.channels * 10 ** 2, 256),
-            nn.LayerNorm(256),
-            nn.ELU(),
-            nn.Linear(256, config.data.channels * 10 ** 2)
-        )
+        self.fc = nn.Sequential(nn.Linear(config.data.channels * 10**2, 256), nn.LayerNorm(256), nn.ELU(),
+                                nn.Linear(256, config.data.channels * 10**2))
 
     def forward(self, x):
         if x.is_cuda and self.config.training.ngpu > 1:
-            score = nn.parallel.data_parallel(
-                self.u_net, x, list(range(self.config.training.ngpu)))
+            score = nn.parallel.data_parallel(self.u_net, x, list(range(self.config.training.ngpu)))
         else:
             score = self.u_net(x)
-        score = self.fc(score.view(x.shape[0], -1)).view(
-            x.shape[0], self.config.data.channels, 10, 10)
+        score = self.fc(score.view(x.shape[0], -1)).view(x.shape[0], self.config.data.channels, 10, 10)
         return score

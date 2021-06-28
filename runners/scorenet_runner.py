@@ -1,16 +1,17 @@
-import numpy as np
-from losses.sliced_sm import sliced_score_estimation_vr
-from losses.dsm import dsm_score_estimation
 import logging
-import torch
 import os
 import shutil
+
+import numpy as np
 import tensorboardX
+import torch
 import torch.optim as optim
-from torchvision.datasets import MNIST, CIFAR10, ImageFolder
 import torchvision.transforms as transforms
-from torch.utils.data import DataLoader, Subset
+from losses.dsm import dsm_score_estimation
+from losses.sliced_sm import sliced_score_estimation_vr
 from models.scorenet import ResScore
+from torch.utils.data import DataLoader, Subset
+from torchvision.datasets import CIFAR10, MNIST, ImageFolder
 
 __all__ = ['ScoreNetRunner']
 
@@ -22,7 +23,9 @@ class ScoreNetRunner():
 
     def get_optimizer(self, parameters):
         if self.config.optim.optimizer == 'Adam':
-            return optim.Adam(parameters, lr=self.config.optim.lr, weight_decay=self.config.optim.weight_decay,
+            return optim.Adam(parameters,
+                              lr=self.config.optim.lr,
+                              weight_decay=self.config.optim.weight_decay,
                               betas=(self.config.optim.beta1, 0.999))
         elif self.config.optim.optimizer == 'RMSProp':
             return optim.RMSprop(parameters, lr=self.config.optim.lr, weight_decay=self.config.optim.weight_decay)
@@ -36,18 +39,21 @@ class ScoreNetRunner():
         return torch.log(image) - torch.log1p(-image)
 
     def train(self):
-        transform = transforms.Compose([
-            transforms.Resize(self.config.data.image_size),
-            transforms.ToTensor()
-        ])
+        transform = transforms.Compose([transforms.Resize(self.config.data.image_size), transforms.ToTensor()])
 
         if self.config.data.dataset == 'CIFAR10':
-            dataset = CIFAR10(os.path.join(self.args.run, 'datasets', 'cifar10'), train=True, download=True,
+            dataset = CIFAR10(os.path.join(self.args.run, 'datasets', 'cifar10'),
+                              train=True,
+                              download=True,
                               transform=transform)
-            test_dataset = CIFAR10(os.path.join(self.args.run, 'datasets', 'cifar10'), train=False, download=True,
+            test_dataset = CIFAR10(os.path.join(self.args.run, 'datasets', 'cifar10'),
+                                   train=False,
+                                   download=True,
                                    transform=transform)
         elif self.config.data.dataset == 'MNIST':
-            dataset = MNIST(os.path.join(self.args.run, 'datasets', 'mnist'), train=True, download=True,
+            dataset = MNIST(os.path.join(self.args.run, 'datasets', 'mnist'),
+                            train=True,
+                            download=True,
                             transform=transform)
             num_items = len(dataset)
             indices = list(range(num_items))
@@ -73,17 +79,16 @@ class ScoreNetRunner():
             np.random.seed(2019)
             np.random.shuffle(indices)
             np.random.set_state(random_state)
-            train_indices, test_indices = indices[:int(num_items * 0.7)], indices[
-                                                                          int(num_items * 0.7):int(num_items * 0.8)]
+            train_indices, test_indices = indices[:int(num_items * 0.7)], indices[int(num_items * 0.7):int(num_items *
+                                                                                                           0.8)]
             test_dataset = Subset(dataset, test_indices)
             dataset = Subset(dataset, train_indices)
 
         dataloader = DataLoader(dataset, batch_size=self.config.training.batch_size, shuffle=True, num_workers=4)
-        test_loader = DataLoader(test_dataset, batch_size=self.config.training.batch_size, shuffle=True,
-                                 num_workers=4)
+        test_loader = DataLoader(test_dataset, batch_size=self.config.training.batch_size, shuffle=True, num_workers=4)
 
         test_iter = iter(test_loader)
-        self.config.input_dim = self.config.data.image_size ** 2 * self.config.data.channels
+        self.config.input_dim = self.config.data.image_size**2 * self.config.data.channels
 
         tb_path = os.path.join(self.args.run, 'tensorboard', self.args.doc)
         if os.path.exists(tb_path):
@@ -151,10 +156,7 @@ class ScoreNetRunner():
                     tb_logger.add_scalar('test_loss', test_loss, global_step=step)
 
                 if step % self.config.training.snapshot_freq == 0:
-                    states = [
-                        score.state_dict(),
-                        optimizer.state_dict()
-                    ]
+                    states = [score.state_dict(), optimizer.state_dict()]
                     torch.save(states, os.path.join(self.args.log, 'checkpoint_{}.pth'.format(step)))
                     torch.save(states, os.path.join(self.args.log, 'checkpoint.pth'))
 
